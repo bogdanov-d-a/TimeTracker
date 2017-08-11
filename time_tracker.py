@@ -149,6 +149,10 @@ class ReportBuilder:
         sub_int_from_dict(self.checked_in, label, time)
         add_int_to_dict(self.checked_in, new_label, time)
 
+    def transfer_time(self, src_label, dst_label, time):
+        self.remove(src_label, time)
+        self.checkin(dst_label, time)
+
     def checkout(self, label, time):
         if type(label) is not str:
             fail()
@@ -292,7 +296,9 @@ ACTION_TYPES = [
     'checkout-one',
     'checkout-all',
     'dayleap',
+    'remove',
     'remove-ongoing',
+    'transfer-time',
     'touch',
     'rename',
 ]
@@ -332,8 +338,12 @@ def apply_action(builder, action):
         builder.checkout_all()
     elif type_.equals('dayleap'):
         builder.allow_leap()
+    elif type_.equals('remove'):
+        builder.remove(action[1], action[2])
     elif type_.equals('remove-ongoing'):
         builder.remove_ongoing(action[1])
+    elif type_.equals('transfer-time'):
+        builder.transfer_time(action[1], action[2], action[3])
     elif type_.equals('touch'):
         builder.touch(action[1])
     elif type_.equals('rename'):
