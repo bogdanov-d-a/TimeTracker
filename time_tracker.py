@@ -539,7 +539,7 @@ def make_stats(days, today, goal_times, remaining_days_range,
             est_month_time_passed_with_today = est_month_time_passed
             real_month_time_passed_with_today = real_month_time_passed
             real_month_time_total_with_today = real_month_time_total
-            
+
             if today in rbs:
                 real_month_time_passed_with_today += rbs[today].total_time()
                 est_month_time_passed_with_today += parse_duration(schedule_days[today][0])
