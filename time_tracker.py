@@ -218,9 +218,9 @@ class ReportBuilder:
         if len(self.checked_out) > 0:
             out_file.write(dict_to_text('Checked out tasks', self.checked_out) + '\n')
 
-        out_file.write('Checked out: ' + duration_string(self.checked_out_time()) + '\n')
-        out_file.write('Pending time: ' + duration_string(self.pending_time()) + '\n')
-        out_file.write('Total time: ' + duration_string(self.total_time()) + '\n')
+        out_file.write('Checked out: ' + duration_string_with_negative(self.checked_out_time()) + '\n')
+        out_file.write('Pending time: ' + duration_string_with_negative(self.pending_time()) + '\n')
+        out_file.write('Total time: ' + duration_string_with_negative(self.total_time()) + '\n')
 
 class ReportBuilder2(ReportBuilder):
     def __init__(self):
@@ -298,10 +298,21 @@ class ReportBuilder3(ReportBuilder2):
         self.task_stack.append(self.ongoing_action[0])
         self.switch(label, time)
 
+    def push_stop(self, time):
+        if type(time) is str:
+            time = parse_time_point(time)
+        self.task_stack.append(self.ongoing_action[0])
+        self.stop(time)
+
     def pop(self, time):
         if type(time) is str:
             time = parse_time_point(time)
         self.switch(self.task_stack.pop(), time)
+
+    def pop_stop(self, time):
+        if type(time) is str:
+            time = parse_time_point(time)
+        self.start(self.task_stack.pop(), time)
 
     def drop_stack(self):
         self.task_stack = []
@@ -317,7 +328,9 @@ ACTION_TYPES = [
     'stop',
     'switch',
     'push',
+    'push-stop',
     'pop',
+    'pop-stop',
     'checkin',
     'checkout',
     'checkout-one',
@@ -354,8 +367,12 @@ def apply_action(builder, action):
         builder.switch(action[1], action[2])
     elif type_.equals('push'):
         builder.push(action[1], action[2])
+    elif type_.equals('push-stop'):
+        builder.push_stop(action[1])
     elif type_.equals('pop'):
         builder.pop(action[1])
+    elif type_.equals('pop-stop'):
+        builder.pop_stop(action[1])
     elif type_.equals('checkin'):
         builder.checkin(action[1], action[2])
     elif type_.equals('checkout'):
@@ -460,7 +477,7 @@ def make_stats(days, today, goal_times, remaining_days_range,
         month_time = 0
         for _, data in key_sorted_dict_items(rbs):
             month_time += data.total_time()
-        out_file.write('Total time for month: ' + duration_string(month_time) + ' (' + str(month_time / 60) + ')\n')
+        out_file.write('Total time for month: ' + duration_string_with_negative(month_time) + ' (' + str(month_time / 60) + ')\n')
 
         if len(goal_times) > 0 and remaining_days_range is not None:
             out_file.write('\n')
@@ -495,7 +512,7 @@ def make_stats(days, today, goal_times, remaining_days_range,
                 out_file.write('Day ' + str(day) + ' (' + weekday_to_string(cur_weekday) + '): ' + data[0])
 
                 if day in rbs:
-                    out_file.write(' -> ' + duration_string(rbs[day].total_time()))
+                    out_file.write(' -> ' + duration_string_with_negative(rbs[day].total_time()))
                     over_time = rbs[day].total_time() - parse_duration(schedule_days[day][0])
                     out_file.write(' ' + duration_string_with_negative(over_time, True))
 
@@ -522,7 +539,7 @@ def make_stats(days, today, goal_times, remaining_days_range,
             est_month_time_passed_with_today = est_month_time_passed
             real_month_time_passed_with_today = real_month_time_passed
             real_month_time_total_with_today = real_month_time_total
-
+            
             if today in rbs:
                 real_month_time_passed_with_today += rbs[today].total_time()
                 est_month_time_passed_with_today += parse_duration(schedule_days[today][0])
@@ -532,15 +549,15 @@ def make_stats(days, today, goal_times, remaining_days_range,
             month_time_diff_with_today = real_month_time_passed_with_today - est_month_time_passed_with_today
 
             out_file.write('Estimation month time: ')
-            out_file.write(duration_string(est_month_time_total) + ' -> ' + duration_string(real_month_time_total))
-            out_file.write(' / ' + duration_string(est_month_time_passed) + ' -> ' + duration_string(real_month_time_passed))
+            out_file.write(duration_string(est_month_time_total) + ' -> ' + duration_string_with_negative(real_month_time_total))
+            out_file.write(' / ' + duration_string(est_month_time_passed) + ' -> ' + duration_string_with_negative(real_month_time_passed))
             out_file.write(' ' + duration_string_with_negative(month_time_diff, True))
             out_file.write('\n')
 
             if today in rbs:
                 out_file.write('Estimation month time (with today): ')
-                out_file.write(duration_string(est_month_time_total) + ' -> ' + duration_string(real_month_time_total_with_today))
-                out_file.write(' / ' + duration_string(est_month_time_passed_with_today) + ' -> ' + duration_string(real_month_time_passed_with_today))
+                out_file.write(duration_string(est_month_time_total) + ' -> ' + duration_string_with_negative(real_month_time_total_with_today))
+                out_file.write(' / ' + duration_string(est_month_time_passed_with_today) + ' -> ' + duration_string_with_negative(real_month_time_passed_with_today))
                 out_file.write(' ' + duration_string_with_negative(month_time_diff_with_today, True))
                 out_file.write('\n')
 
