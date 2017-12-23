@@ -90,15 +90,24 @@ def duration_string(d):
     result += str(m) + 'm'
     return result
 
-def duration_string_with_negative(d):
+def duration_string_with_negative(d, show_pos=False):
     if d < 0:
-        sign = '- '
+        prefix = '-('
+        suffix = ')'
     else:
-        sign = ''
-    return sign + duration_string(abs(d))
+        if show_pos:
+            prefix = '+('
+            suffix = ')'
+        else:
+            prefix = ''
+            suffix = ''
+    return prefix + duration_string(abs(d)) + suffix
 
 def key_sorted_dict_items(dict_):
     return sorted(dict_.items(), key=lambda t: t[0])
+
+def sorted_dict_keys(dict_):
+    return sorted(dict_.keys())
 
 def add_int_to_dict(dict_, key, incr):
     if key not in dict_:
@@ -115,8 +124,23 @@ def dict_to_text(title, dict_):
     for name, time in key_sorted_dict_items(dict_):
         if time == 0:
             fail()
-        str_ += name + ' - ' + duration_string(time) + '\n'
+        str_ += name + ' - ' + duration_string_with_negative(time) + '\n'
     return str_
+
+def next_weekday(weekday):
+    return (weekday + 1) % 7
+
+def weekday_to_string(weekday):
+    dict_ = {
+        0: 'Mon',
+        1: 'Tue',
+        2: 'Wed',
+        3: 'Thu',
+        4: 'Fri',
+        5: 'Sat',
+        6: 'Sun',
+    }
+    return dict_[weekday]
 
 class ReportBuilder:
     def __init__(self):
@@ -279,10 +303,13 @@ class ReportBuilder3(ReportBuilder2):
             time = parse_time_point(time)
         self.switch(self.task_stack.pop(), time)
 
+    def drop_stack(self):
+        self.task_stack = []
+
     def get_warnings(self):
         result = ReportBuilder2.get_warnings(self)
         if len(self.task_stack) != 0:
-            result.append('Task stack is not empty')
+            result.append('Task stack is not empty: ' + ', '.join(self.task_stack))
         return result
 
 ACTION_TYPES = [
@@ -301,6 +328,7 @@ ACTION_TYPES = [
     'transfer-time',
     'touch',
     'rename',
+    'drop-stack',
 ]
 
 class ActionType:
@@ -348,11 +376,16 @@ def apply_action(builder, action):
         builder.touch(action[1])
     elif type_.equals('rename'):
         builder.rename(action[1], action[2])
+    elif type_.equals('drop-stack'):
+        builder.drop_stack()
     else:
         fail()
 
 def print_left_time(rbs, annotation, day_limit, today,
-                    remaining_days_range, goal_time, mock_time, out_file):
+                    remaining_days_range, goal_times, mock_time, out_file):
+    if len(goal_times) == 0:
+        fail()
+
     sum_ = 0
     for num, data in key_sorted_dict_items(rbs):
         if num >= day_limit:
@@ -360,31 +393,46 @@ def print_left_time(rbs, annotation, day_limit, today,
         sum_ += data.total_time()
     sum_ += mock_time
 
-    remaining_time = parse_duration(goal_time) - sum_
+    remaining_times = []
+    for goal_time in goal_times:
+        remaining_times.append(parse_duration(goal_time) - sum_)
+
+    remaining_times_str = ''
+    first = True
+    for remaining_time in remaining_times:
+        if not first:
+            remaining_times_str += ' / '
+        remaining_times_str += duration_string_with_negative(remaining_time)
+        first = False
+
+    out_file.write(annotation + ': ' + remaining_times_str + ' remaining for this month\n')
 
     if today in rbs:
         worked_today = rbs[today].total_time()
     else:
         worked_today = 0
 
-    out_file.write(annotation + ': '
-                   + duration_string_with_negative(remaining_time)
-                   + ' remaining for this month\n')
-
     for remaining_days in remaining_days_range:
-        average_day_time = math.ceil(remaining_time / remaining_days)
-        out_file.write('Average work time for '
-                       + str(remaining_days) + ' days: '
-                       + duration_string_with_negative(average_day_time))
+        out_file.write('Average work time for ' + str(remaining_days) + ' days: ')
 
-        if worked_today != 0:
-            left_today = average_day_time - worked_today
-            out_file.write(' (' + duration_string_with_negative(left_today) + ' left)')
+        first = True
+        for remaining_time in remaining_times:
+            if not first:
+                out_file.write(' / ')
+
+            average_day_time = math.ceil(remaining_time / remaining_days)
+            out_file.write(duration_string_with_negative(average_day_time))
+
+            if worked_today != 0:
+                left_today = average_day_time - worked_today
+                out_file.write(' (' + duration_string_with_negative(left_today) + ' left)')
+
+            first = False
 
         out_file.write('\n')
 
-def make_stats(days, today, goal_time, remaining_days_range,
-               remaining_days_range_next, today_work_plan, out_filename):
+def make_stats(days, today, goal_times, remaining_days_range,
+               remaining_days_range_next, today_work_plan, schedule_info, out_filename):
     with codecs.open(out_filename, 'w') as out_file:
         rbs = {}
         for day, data in key_sorted_dict_items(days):
@@ -412,27 +460,104 @@ def make_stats(days, today, goal_time, remaining_days_range,
         month_time = 0
         for _, data in key_sorted_dict_items(rbs):
             month_time += data.total_time()
-        out_file.write('Total time for month: ' + duration_string(month_time) + '\n')
+        out_file.write('Total time for month: ' + duration_string(month_time) + ' (' + str(month_time / 60) + ')\n')
 
-        if goal_time is not None and remaining_days_range is not None:
+        if len(goal_times) > 0 and remaining_days_range is not None:
             out_file.write('\n')
             print_left_time(rbs, 'At the ' + str(today) + ' day start',
-                            today, today, remaining_days_range, goal_time, 0, out_file)
+                            today, today, remaining_days_range, goal_times, 0, out_file)
 
             if remaining_days_range_next is not None:
                 out_file.write('\n')
                 print_left_time(rbs, 'Leaving now', today + 1, today + 1,
-                                remaining_days_range_next, goal_time, 0, out_file)
+                                remaining_days_range_next, goal_times, 0, out_file)
 
                 if today_work_plan is not None:
                     out_file.write('\n')
                     print_left_time(rbs, 'Leaving after ' + today_work_plan,
                                     today, today + 1, remaining_days_range_next,
-                                    goal_time, parse_duration(today_work_plan), out_file)
+                                    goal_times, parse_duration(today_work_plan), out_file)
+
+        if schedule_info is not None:
+            out_file.write('\n')
+
+            schedule_days = schedule_info[0]
+            schedule_first_weekday = schedule_info[1]
+
+            if sorted_dict_keys(schedule_days) != list(range(1, len(schedule_days) + 1)):
+                fail()
+
+            cur_weekday = schedule_first_weekday
+            for day, data in key_sorted_dict_items(schedule_days):
+                if day == today:
+                    out_file.write('> ')
+
+                out_file.write('Day ' + str(day) + ' (' + weekday_to_string(cur_weekday) + '): ' + data[0])
+
+                if day in rbs:
+                    out_file.write(' -> ' + duration_string(rbs[day].total_time()))
+                    over_time = rbs[day].total_time() - parse_duration(schedule_days[day][0])
+                    out_file.write(' ' + duration_string_with_negative(over_time, True))
+
+                if len(data[1]) > 0:
+                    out_file.write(' (note: ' + data[1] + ')')
+
+                out_file.write('\n')
+                cur_weekday = next_weekday(cur_weekday)
+
+            est_month_time_passed = 0
+            real_month_time_passed = 0
+            month_time_left = 0
+
+            for day in range(1, len(schedule_days) + 1):
+                if (day < today) and (day in rbs):
+                    real_month_time_passed += rbs[day].total_time()
+                    est_month_time_passed += parse_duration(schedule_days[day][0])
+                else:
+                    month_time_left += parse_duration(schedule_days[day][0])
+
+            est_month_time_total = est_month_time_passed + month_time_left
+            real_month_time_total = real_month_time_passed + month_time_left
+
+            est_month_time_passed_with_today = est_month_time_passed
+            real_month_time_passed_with_today = real_month_time_passed
+            real_month_time_total_with_today = real_month_time_total
+
+            if today in rbs:
+                real_month_time_passed_with_today += rbs[today].total_time()
+                est_month_time_passed_with_today += parse_duration(schedule_days[today][0])
+                real_month_time_total_with_today += rbs[today].total_time() - parse_duration(schedule_days[today][0])
+
+            month_time_diff = real_month_time_passed - est_month_time_passed
+            month_time_diff_with_today = real_month_time_passed_with_today - est_month_time_passed_with_today
+
+            out_file.write('Estimation month time: ')
+            out_file.write(duration_string(est_month_time_total) + ' -> ' + duration_string(real_month_time_total))
+            out_file.write(' / ' + duration_string(est_month_time_passed) + ' -> ' + duration_string(real_month_time_passed))
+            out_file.write(' ' + duration_string_with_negative(month_time_diff, True))
+            out_file.write('\n')
+
+            if today in rbs:
+                out_file.write('Estimation month time (with today): ')
+                out_file.write(duration_string(est_month_time_total) + ' -> ' + duration_string(real_month_time_total_with_today))
+                out_file.write(' / ' + duration_string(est_month_time_passed_with_today) + ' -> ' + duration_string(real_month_time_passed_with_today))
+                out_file.write(' ' + duration_string_with_negative(month_time_diff_with_today, True))
+                out_file.write('\n')
+
+            if est_month_time_passed != 0:
+                real_est_ratio = real_month_time_passed / est_month_time_passed
+                out_file.write('Estimation-start ratio: ' + str(real_est_ratio) + '\n')
+                out_file.write('Progressive estimation: ' + duration_string(math.ceil(est_month_time_total * real_est_ratio)) + '\n')
+
+            if today in rbs:
+                if est_month_time_passed_with_today != 0:
+                    real_est_ratio_with_today = real_month_time_passed_with_today / est_month_time_passed_with_today
+                    out_file.write('Estimation-start ratio (with today): ' + str(real_est_ratio_with_today) + '\n')
+                    out_file.write('Progressive estimation (with today): ' + duration_string(math.ceil(est_month_time_total * real_est_ratio_with_today)) + '\n')
 
 def view_stats(days, today, goal_time, remaining_days_range,
-               remaining_days_range_next, today_work_plan):
+               remaining_days_range_next, today_work_plan, schedule_info):
     out_filename = 'stats.txt'
     make_stats(days, today, goal_time, remaining_days_range,
-               remaining_days_range_next, today_work_plan, out_filename)
+               remaining_days_range_next, today_work_plan, schedule_info, out_filename)
     webbrowser.open(out_filename)
