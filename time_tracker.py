@@ -448,7 +448,7 @@ def print_left_time(rbs, annotation, day_limit, today,
 
         out_file.write('\n')
 
-def make_stats(days, today, goal_times, remaining_days_range,
+def make_work_stats(days, today, goal_times, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info, out_filename):
     with codecs.open(out_filename, 'w') as out_file:
         rbs = {}
@@ -572,9 +572,28 @@ def make_stats(days, today, goal_times, remaining_days_range,
                     out_file.write('Estimation-start ratio (with today): ' + str(real_est_ratio_with_today) + '\n')
                     out_file.write('Progressive estimation (with today): ' + duration_string(math.ceil(est_month_time_total * real_est_ratio_with_today)) + '\n')
 
-def view_stats(days, today, goal_time, remaining_days_range,
+def view_work_stats(days, today, goal_time, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info):
     out_filename = 'stats.txt'
-    make_stats(days, today, goal_time, remaining_days_range,
+    make_work_stats(days, today, goal_time, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info, out_filename)
+    webbrowser.open(out_filename)
+
+def make_basic_stats(actions, out_filename):
+    with codecs.open(out_filename, 'w') as out_file:
+        rb = ReportBuilder3()
+        for action in actions:
+            apply_action(rb, action)
+
+        warnings = rb.get_warnings()
+        if len(warnings) > 0:
+            for warning in warnings:
+                out_file.write(warning + '\n')
+            out_file.write('\n')
+
+        rb.print_summary(out_file)
+
+def view_basic_stats(actions):
+    out_filename = 'stats.txt'
+    make_basic_stats(actions, out_filename)
     webbrowser.open(out_filename)
