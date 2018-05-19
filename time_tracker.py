@@ -450,7 +450,7 @@ def print_left_time(rbs, annotation, day_limit, today,
 
 def make_work_stats(days, today, goal_times, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info, out_filename):
-    with codecs.open(out_filename, 'w') as out_file:
+    with codecs.open(out_filename, 'w', 'utf-8') as out_file:
         rbs = {}
         for day, data in key_sorted_dict_items(days):
             rb = ReportBuilder3()
@@ -580,7 +580,7 @@ def view_work_stats(days, today, goal_time, remaining_days_range,
     webbrowser.open(out_filename)
 
 def make_basic_stats(actions, out_filename):
-    with codecs.open(out_filename, 'w') as out_file:
+    with codecs.open(out_filename, 'w', 'utf-8') as out_file:
         rb = ReportBuilder3()
         for action in actions:
             apply_action(rb, action)
