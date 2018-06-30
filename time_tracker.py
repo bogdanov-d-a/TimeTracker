@@ -1,6 +1,6 @@
 import math
 import codecs
-import webbrowser
+from ed_file_data_viewer import show_data_using_file
 
 
 def fail():
@@ -574,10 +574,10 @@ def make_work_stats(days, today, goal_times, remaining_days_range,
 
 def view_work_stats(days, today, goal_time, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info):
-    out_filename = 'stats.txt'
-    make_work_stats(days, today, goal_time, remaining_days_range,
-               remaining_days_range_next, today_work_plan, schedule_info, out_filename)
-    webbrowser.open(out_filename)
+    def writer(path):
+        make_work_stats(days, today, goal_time, remaining_days_range,
+                remaining_days_range_next, today_work_plan, schedule_info, path)
+    show_data_using_file(writer)
 
 def make_basic_stats(actions, out_filename):
     with codecs.open(out_filename, 'w', 'utf-8') as out_file:
@@ -594,6 +594,6 @@ def make_basic_stats(actions, out_filename):
         rb.print_summary(out_file)
 
 def view_basic_stats(actions):
-    out_filename = 'stats.txt'
-    make_basic_stats(actions, out_filename)
-    webbrowser.open(out_filename)
+    def writer(path):
+        make_basic_stats(actions, path)
+    show_data_using_file(writer)
