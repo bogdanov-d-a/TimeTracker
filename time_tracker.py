@@ -269,6 +269,12 @@ class ReportBuilder2(ReportBuilder):
 
         self.remove(self.ongoing_action[0], time)
 
+    def transfer_time_ongoing(self, dst_label, time):
+        if self.ongoing_action is None:
+            fail('No ongoing task to get ' + duration_string_with_negative(time) + ' from')
+
+        self.transfer_time(self.ongoing_action[0], dst_label, time)
+
     def touch(self, time):
         if type(time) is str:
             time = parse_time_point(time)
@@ -339,6 +345,7 @@ ACTION_TYPES = [
     'remove',
     'remove-ongoing',
     'transfer-time',
+    'transfer-time-ongoing',
     'touch',
     'rename',
     'drop-stack',
@@ -389,6 +396,8 @@ def apply_action(builder, action):
         builder.remove_ongoing(action[1])
     elif type_.equals('transfer-time'):
         builder.transfer_time(action[1], action[2], action[3])
+    elif type_.equals('transfer-time-ongoing'):
+        builder.transfer_time_ongoing(action[1], action[2])
     elif type_.equals('touch'):
         builder.touch(action[1])
     elif type_.equals('rename'):
