@@ -3,8 +3,8 @@ import codecs
 from ed_file_data_viewer import show_data_using_file
 
 
-def fail():
-    raise Exception('fail')
+def fail(msg='fail'):
+    raise Exception(msg)
 
 def hm_to_m(hours, minutes):
     if type(hours) is not int:
@@ -39,14 +39,14 @@ def parse_time_point(str_):
     if type(str_) is not str:
         fail()
     if len(str_) != 5:
-        fail()
+        fail(str_)
     if str_[2] != ':':
-        fail()
+        fail(str_)
 
     h = int(str_[:2])
     m = int(str_[3:])
     if h >= 24 or m >= 60:
-        fail()
+        fail(str_)
 
     result = hm_to_m(int(str_[:2]), int(str_[3:]))
     validate_time_point(result)
@@ -58,7 +58,7 @@ def get_duration_postfix_mult(postfix):
     elif postfix == 'h':
         return 60
     else:
-        fail()
+        fail(postfix + ' postfix')
 
 def parse_duration(str_):
     result = 0
@@ -232,20 +232,20 @@ class ReportBuilder2(ReportBuilder):
         if type(time) is str:
             time = parse_time_point(time)
         if self.ongoing_action is not None:
-            fail()
+            fail(self.ongoing_action[0] + ' already running, can\'t start ' + label + ' at ' + time_point_string(time))
         self.ongoing_action = (label, time)
 
     def stop(self, time):
         if type(time) is str:
             time = parse_time_point(time)
         if self.ongoing_action is None:
-            fail()
+            fail('Nothing to stop (at ' + time_point_string(time) + ')')
 
         label = self.ongoing_action[0]
         passed_time = time - self.ongoing_action[1]
         if passed_time < 0:
             if self.allowed_leaps <= 0:
-                fail()
+                fail('Not enough dayleaps for period ' + time_point_string(self.ongoing_action[1]) + ' - ' + time_point_string(time))
             self.allowed_leaps -= 1
             passed_time += 24 * 60
 
@@ -265,7 +265,7 @@ class ReportBuilder2(ReportBuilder):
         if type(time) is str:
             time = parse_duration(time)
         if self.ongoing_action is None:
-            fail()
+            fail('No ongoing task to get ' + duration_string_with_negative(time) + ' from')
 
         self.remove(self.ongoing_action[0], time)
 
@@ -273,7 +273,7 @@ class ReportBuilder2(ReportBuilder):
         if type(time) is str:
             time = parse_time_point(time)
         if self.ongoing_action is None:
-            fail()
+            fail('No ongoing task to touch at ' + time_point_string(time))
 
         self.switch(self.ongoing_action[0], time)
 
