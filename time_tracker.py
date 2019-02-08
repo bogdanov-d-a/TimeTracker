@@ -626,13 +626,13 @@ def get_basic_stats(actions):
 
     return result
 
-def basic_stats_viewer(actions_filename, day):
+def basic_stats_viewer(data_filename):
     def data_provider():
-        with codecs.open(actions_filename, 'r', 'utf-8') as actions_file:
+        with codecs.open(data_filename, 'r', 'utf-8') as data_file:
             try:
-                actions_data = actions_file.read()
-                actions = eval(actions_data)[day]
-                return get_basic_stats(actions)
+                data_data = data_file.read()
+                data = eval(data_data)
+                return get_basic_stats(data[0][data[1]])
             except:
                 return traceback.format_exc()
 
