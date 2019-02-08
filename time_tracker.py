@@ -606,7 +606,7 @@ def work_stats_viewer(days_filename, today, goal_times, remaining_days_range,
             except:
                 return traceback.format_exc()
 
-    ed_query_window.run(data_provider)
+    ed_query_window.run(data_provider, 'Work time stats')
 
 
 def get_basic_stats(actions):
@@ -636,4 +636,4 @@ def basic_stats_viewer(actions_filename, day):
             except:
                 return traceback.format_exc()
 
-    ed_query_window.run(data_provider)
+    ed_query_window.run(data_provider, 'Time stats')
