@@ -1,5 +1,6 @@
 import math
 import codecs
+import traceback
 import ed_query_window
 
 
@@ -597,10 +598,13 @@ def work_stats_viewer(days_filename, today, goal_times, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info):
     def data_provider():
         with codecs.open(days_filename, 'r', 'utf-8') as days_file:
-            days_data = days_file.read()
-            days = eval(days_data)
-            return get_work_stats(days, today, goal_times, remaining_days_range,
-               remaining_days_range_next, today_work_plan, schedule_info)
+            try:
+                days_data = days_file.read()
+                days = eval(days_data)
+                return get_work_stats(days, today, goal_times, remaining_days_range,
+                remaining_days_range_next, today_work_plan, schedule_info)
+            except:
+                return traceback.format_exc()
 
     ed_query_window.run(data_provider)
 
@@ -625,8 +629,11 @@ def get_basic_stats(actions):
 def basic_stats_viewer(actions_filename, day):
     def data_provider():
         with codecs.open(actions_filename, 'r', 'utf-8') as actions_file:
-            actions_data = actions_file.read()
-            actions = eval(actions_data)[day]
-            return get_basic_stats(actions)
+            try:
+                actions_data = actions_file.read()
+                actions = eval(actions_data)[day]
+                return get_basic_stats(actions)
+            except:
+                return traceback.format_exc()
 
     ed_query_window.run(data_provider)
