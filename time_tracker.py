@@ -594,14 +594,14 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
     return result
 
 
-def work_stats_viewer(days_filename, today, goal_times, remaining_days_range,
+def work_stats_viewer(data_filename, goal_times, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info):
     def data_provider():
-        with codecs.open(days_filename, 'r', 'utf-8') as days_file:
+        with codecs.open(data_filename, 'r', 'utf-8') as data_file:
             try:
-                days_data = days_file.read()
-                days = eval(days_data)
-                return get_work_stats(days, today, goal_times, remaining_days_range,
+                data_data = data_file.read()
+                data = eval(data_data)
+                return get_work_stats(data[0], data[1], goal_times, remaining_days_range,
                 remaining_days_range_next, today_work_plan, schedule_info)
             except:
                 return traceback.format_exc()
