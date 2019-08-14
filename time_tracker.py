@@ -1,7 +1,7 @@
 import math
 import codecs
 import traceback
-import ed_query_window
+import edpu.query_window
 
 
 def fail(msg='fail'):
@@ -606,7 +606,7 @@ def work_stats_viewer(data_filename, goal_times, remaining_days_range,
             except:
                 return traceback.format_exc()
 
-    ed_query_window.run(data_provider, 'Work time stats')
+    edpu.query_window.run(data_provider, 'Work time stats')
 
 
 def get_basic_stats(actions):
@@ -636,4 +636,4 @@ def basic_stats_viewer(data_filename):
             except:
                 return traceback.format_exc()
 
-    ed_query_window.run(data_provider, 'Time stats')
+    edpu.query_window.run(data_provider, 'Time stats')
