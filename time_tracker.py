@@ -1,7 +1,6 @@
 import math
-import codecs
-import traceback
 import edpu.query_window
+import edpu.file_utils
 
 
 def fail(msg='fail'):
@@ -597,16 +596,10 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
 def work_stats_viewer(data_filename, goal_times, remaining_days_range,
                remaining_days_range_next, today_work_plan, schedule_info):
     def data_provider():
-        with codecs.open(data_filename, 'r', 'utf-8') as data_file:
-            try:
-                data_data = data_file.read()
-                data = eval(data_data)
-                return get_work_stats(data[0], data[1], goal_times, remaining_days_range,
-                remaining_days_range_next, today_work_plan, schedule_info)
-            except:
-                return traceback.format_exc()
-
-    edpu.query_window.run(data_provider, 'Work time stats')
+        data = edpu.file_utils.eval_file(data_filename)
+        return get_work_stats(data[0], data[1], goal_times, remaining_days_range,
+            remaining_days_range_next, today_work_plan, schedule_info)
+    edpu.query_window.run_with_exception_wrapper(data_provider, 'Work time stats')
 
 
 def get_basic_stats(actions):
@@ -628,12 +621,6 @@ def get_basic_stats(actions):
 
 def basic_stats_viewer(data_filename):
     def data_provider():
-        with codecs.open(data_filename, 'r', 'utf-8') as data_file:
-            try:
-                data_data = data_file.read()
-                data = eval(data_data)
-                return get_basic_stats(data[0][data[1]])
-            except:
-                return traceback.format_exc()
-
-    edpu.query_window.run(data_provider, 'Time stats')
+        data = edpu.file_utils.eval_file(data_filename)
+        return get_basic_stats(data[0][data[1]])
+    edpu.query_window.run_with_exception_wrapper(data_provider, 'Time stats')
