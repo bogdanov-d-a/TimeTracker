@@ -1,107 +1,11 @@
 import math
 import edpu.query_window
 import edpu.file_utils
+import edpu.calc_time_utils
 
 
 def fail(msg='fail'):
     raise Exception(msg)
-
-def hm_to_m(hours, minutes):
-    if type(hours) is not int:
-        fail()
-    if hours < 0:
-        fail()
-    if type(minutes) is not int:
-        fail()
-    if minutes < 0:
-        fail()
-    return hours * 60 + minutes
-
-def m_to_hm(minutes):
-    if type(minutes) is not int:
-        fail()
-    if minutes < 0:
-        fail()
-    return (int(minutes / 60), minutes % 60)
-
-def validate_time(time):
-    if type(time) is not int:
-        fail()
-    if time < 0:
-        fail()
-
-def validate_time_point(time):
-    validate_time(time)
-    if time >= 24 * 60:
-        fail()
-
-def parse_time_point(str_):
-    if type(str_) is not str:
-        fail()
-    if len(str_) != 5:
-        fail(str_)
-    if str_[2] != ':':
-        fail(str_)
-
-    h = int(str_[:2])
-    m = int(str_[3:])
-    if h >= 24 or m >= 60:
-        fail(str_)
-
-    result = hm_to_m(int(str_[:2]), int(str_[3:]))
-    validate_time_point(result)
-    return result
-
-def get_duration_postfix_mult(postfix):
-    if postfix == 'm':
-        return 1
-    elif postfix == 'h':
-        return 60
-    else:
-        fail(postfix + ' postfix')
-
-def parse_duration(str_):
-    result = 0
-    for part in str_.split(' '):
-        mult = get_duration_postfix_mult(part[-1:])
-        result += mult * int(part[:-1])
-    return result
-
-def time_format_helper(num):
-    if type(num) is not int:
-        fail()
-    if num < 0:
-        fail()
-    grow = 2 - len(str(num))
-    if grow < 0:
-        fail()
-    return '0' * grow + str(num)
-
-def time_point_string(tp):
-    validate_time_point(tp)
-    h, m = m_to_hm(tp)
-    return time_format_helper(h) + ':' + time_format_helper(m)
-
-def duration_string(d):
-    h, m = m_to_hm(d)
-    result = ''
-    if h != 0:
-        result += str(h) + 'h '
-    result += str(m) + 'm'
-    return result
-
-def duration_string_with_negative(d, show_pos=False):
-    if d < 0:
-        prefix = '-('
-        suffix = ')'
-    else:
-        if show_pos:
-            prefix = '+('
-            suffix = ')'
-        else:
-            prefix = ''
-            suffix = ''
-    return prefix + duration_string(abs(d)) + suffix
 
 def key_sorted_dict_items(dict_):
     return sorted(dict_.items(), key=lambda t: t[0])
@@ -124,7 +28,7 @@ def dict_to_text(title, dict_):
     for name, time in key_sorted_dict_items(dict_):
         if time == 0:
             fail()
-        str_ += name + ' - ' + duration_string_with_negative(time) + '\n'
+        str_ += name + ' - ' + edpu.calc_time_utils.duration_string_with_negative(time) + '\n'
     return str_
 
 def next_weekday(weekday):
@@ -151,7 +55,7 @@ class ReportBuilder:
         if type(label) is not str:
             fail()
         if type(time) is str:
-            time = parse_duration(time)
+            time = edpu.calc_time_utils.parse_duration(time)
 
         add_int_to_dict(self.checked_in, label, time)
 
@@ -159,7 +63,7 @@ class ReportBuilder:
         if type(label) is not str:
             fail()
         if type(time) is str:
-            time = parse_duration(time)
+            time = edpu.calc_time_utils.parse_duration(time)
 
         sub_int_from_dict(self.checked_in, label, time)
 
@@ -181,7 +85,7 @@ class ReportBuilder:
         if type(label) is not str:
             fail()
         if type(time) is str:
-            time = parse_duration(time)
+            time = edpu.calc_time_utils.parse_duration(time)
 
         sub_int_from_dict(self.checked_in, label, time)
         add_int_to_dict(self.checked_out, label, time)
@@ -220,9 +124,9 @@ class ReportBuilder:
         if len(self.checked_out) > 0:
             result += dict_to_text('Checked out tasks', self.checked_out) + '\n'
 
-        result += 'Checked out: ' + duration_string_with_negative(self.checked_out_time()) + '\n'
-        result += 'Pending time: ' + duration_string_with_negative(self.pending_time()) + '\n'
-        result += 'Total time: ' + duration_string_with_negative(self.total_time()) + '\n'
+        result += 'Checked out: ' + edpu.calc_time_utils.duration_string_with_negative(self.checked_out_time()) + '\n'
+        result += 'Pending time: ' + edpu.calc_time_utils.duration_string_with_negative(self.pending_time()) + '\n'
+        result += 'Total time: ' + edpu.calc_time_utils.duration_string_with_negative(self.total_time()) + '\n'
 
         return result
 
@@ -234,22 +138,22 @@ class ReportBuilder2(ReportBuilder):
 
     def start(self, label, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         if self.ongoing_action is not None:
-            fail(self.ongoing_action[0] + ' already running, can\'t start ' + label + ' at ' + time_point_string(time))
+            fail(self.ongoing_action[0] + ' already running, can\'t start ' + label + ' at ' + edpu.calc_time_utils.time_point_string(time))
         self.ongoing_action = (label, time)
 
     def stop(self, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         if self.ongoing_action is None:
-            fail('Nothing to stop (at ' + time_point_string(time) + ')')
+            fail('Nothing to stop (at ' + edpu.calc_time_utils.time_point_string(time) + ')')
 
         label = self.ongoing_action[0]
         passed_time = time - self.ongoing_action[1]
         if passed_time < 0:
             if self.allowed_leaps <= 0:
-                fail('Not enough dayleaps for period ' + time_point_string(self.ongoing_action[1]) + ' - ' + time_point_string(time))
+                fail('Not enough dayleaps for period ' + edpu.calc_time_utils.time_point_string(self.ongoing_action[1]) + ' - ' + edpu.calc_time_utils.time_point_string(time))
             self.allowed_leaps -= 1
             passed_time += 24 * 60
 
@@ -258,7 +162,7 @@ class ReportBuilder2(ReportBuilder):
 
     def switch(self, label, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         self.stop(time)
         self.start(label, time)
 
@@ -267,23 +171,23 @@ class ReportBuilder2(ReportBuilder):
 
     def remove_ongoing(self, time):
         if type(time) is str:
-            time = parse_duration(time)
+            time = edpu.calc_time_utils.parse_duration(time)
         if self.ongoing_action is None:
-            fail('No ongoing task to get ' + duration_string_with_negative(time) + ' from')
+            fail('No ongoing task to get ' + edpu.calc_time_utils.duration_string_with_negative(time) + ' from')
 
         self.remove(self.ongoing_action[0], time)
 
     def transfer_time_ongoing(self, dst_label, time):
         if self.ongoing_action is None:
-            fail('No ongoing task to get ' + duration_string_with_negative(time) + ' from')
+            fail('No ongoing task to get ' + edpu.calc_time_utils.duration_string_with_negative(time) + ' from')
 
         self.transfer_time(self.ongoing_action[0], dst_label, time)
 
     def touch(self, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         if self.ongoing_action is None:
-            fail('No ongoing task to touch at ' + time_point_string(time))
+            fail('No ongoing task to touch at ' + edpu.calc_time_utils.time_point_string(time))
 
         self.switch(self.ongoing_action[0], time)
 
@@ -291,7 +195,7 @@ class ReportBuilder2(ReportBuilder):
         result = ReportBuilder.get_warnings(self)
         if self.ongoing_action is not None:
             result.append('Active task (since '
-                          + time_point_string(self.ongoing_action[1])
+                          + edpu.calc_time_utils.time_point_string(self.ongoing_action[1])
                           + '): ' + self.ongoing_action[0])
         if self.allowed_leaps != 0:
             result.append(str(self.allowed_leaps) + ' day leaps are not used')
@@ -304,24 +208,24 @@ class ReportBuilder3(ReportBuilder2):
 
     def push(self, label, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         self.task_stack.append(self.ongoing_action[0])
         self.switch(label, time)
 
     def push_stop(self, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         self.task_stack.append(self.ongoing_action[0])
         self.stop(time)
 
     def pop(self, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         self.switch(self.task_stack.pop(), time)
 
     def pop_stop(self, time):
         if type(time) is str:
-            time = parse_time_point(time)
+            time = edpu.calc_time_utils.parse_time_point(time)
         self.start(self.task_stack.pop(), time)
 
     def drop_stack(self):
@@ -427,14 +331,14 @@ def get_left_time(rbs, annotation, day_limit, today,
 
     remaining_times = []
     for goal_time in goal_times:
-        remaining_times.append(parse_duration(goal_time) - sum_)
+        remaining_times.append(edpu.calc_time_utils.parse_duration(goal_time) - sum_)
 
     remaining_times_str = ''
     first = True
     for remaining_time in remaining_times:
         if not first:
             remaining_times_str += ' / '
-        remaining_times_str += duration_string_with_negative(remaining_time)
+        remaining_times_str += edpu.calc_time_utils.duration_string_with_negative(remaining_time)
         first = False
 
     result += annotation + ': ' + remaining_times_str + ' remaining for this month\n'
@@ -453,11 +357,11 @@ def get_left_time(rbs, annotation, day_limit, today,
                 result += ' / '
 
             average_day_time = math.ceil(remaining_time / remaining_days)
-            result += duration_string_with_negative(average_day_time)
+            result += edpu.calc_time_utils.duration_string_with_negative(average_day_time)
 
             if worked_today != 0:
                 left_today = average_day_time - worked_today
-                result += ' (' + duration_string_with_negative(left_today) + ' left)'
+                result += ' (' + edpu.calc_time_utils.duration_string_with_negative(left_today) + ' left)'
 
             first = False
 
@@ -495,7 +399,7 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
     month_time = 0
     for _, data in key_sorted_dict_items(rbs):
         month_time += data.total_time()
-    result += 'Total time for month: ' + duration_string_with_negative(month_time) + ' (' + str(month_time / 60) + ')\n'
+    result += 'Total time for month: ' + edpu.calc_time_utils.duration_string_with_negative(month_time) + ' (' + str(month_time / 60) + ')\n'
 
     if len(goal_times) > 0 and remaining_days_range is not None:
         result += '\n'
@@ -511,7 +415,7 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
                 result += '\n'
                 result += get_left_time(rbs, 'Leaving after ' + today_work_plan,
                                 today, today + 1, remaining_days_range_next,
-                                goal_times, parse_duration(today_work_plan))
+                                goal_times, edpu.calc_time_utils.parse_duration(today_work_plan))
 
     if schedule_info is not None:
         result += '\n'
@@ -530,9 +434,9 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
             result += 'Day ' + str(day) + ' (' + weekday_to_string(cur_weekday) + '): ' + data[0]
 
             if day in rbs:
-                result += ' -> ' + duration_string_with_negative(rbs[day].total_time())
-                over_time = rbs[day].total_time() - parse_duration(schedule_days[day][0])
-                result += ' ' + duration_string_with_negative(over_time, True)
+                result += ' -> ' + edpu.calc_time_utils.duration_string_with_negative(rbs[day].total_time())
+                over_time = rbs[day].total_time() - edpu.calc_time_utils.parse_duration(schedule_days[day][0])
+                result += ' ' + edpu.calc_time_utils.duration_string_with_negative(over_time, True)
 
             if len(data[1]) > 0:
                 result += ' (note: ' + data[1] + ')'
@@ -547,9 +451,9 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
         for day in range(1, len(schedule_days) + 1):
             if (day < today) and (day in rbs):
                 real_month_time_passed += rbs[day].total_time()
-                est_month_time_passed += parse_duration(schedule_days[day][0])
+                est_month_time_passed += edpu.calc_time_utils.parse_duration(schedule_days[day][0])
             else:
-                month_time_left += parse_duration(schedule_days[day][0])
+                month_time_left += edpu.calc_time_utils.parse_duration(schedule_days[day][0])
 
         est_month_time_total = est_month_time_passed + month_time_left
         real_month_time_total = real_month_time_passed + month_time_left
@@ -560,35 +464,35 @@ def get_work_stats(days, today, goal_times, remaining_days_range,
 
         if today in rbs:
             real_month_time_passed_with_today += rbs[today].total_time()
-            est_month_time_passed_with_today += parse_duration(schedule_days[today][0])
-            real_month_time_total_with_today += rbs[today].total_time() - parse_duration(schedule_days[today][0])
+            est_month_time_passed_with_today += edpu.calc_time_utils.parse_duration(schedule_days[today][0])
+            real_month_time_total_with_today += rbs[today].total_time() - edpu.calc_time_utils.parse_duration(schedule_days[today][0])
 
         month_time_diff = real_month_time_passed - est_month_time_passed
         month_time_diff_with_today = real_month_time_passed_with_today - est_month_time_passed_with_today
 
         result += 'Estimation month time: '
-        result += duration_string(est_month_time_total) + ' -> ' + duration_string_with_negative(real_month_time_total)
-        result += ' / ' + duration_string(est_month_time_passed) + ' -> ' + duration_string_with_negative(real_month_time_passed)
-        result += ' ' + duration_string_with_negative(month_time_diff, True)
+        result += edpu.calc_time_utils.duration_string(est_month_time_total) + ' -> ' + edpu.calc_time_utils.duration_string_with_negative(real_month_time_total)
+        result += ' / ' + edpu.calc_time_utils.duration_string(est_month_time_passed) + ' -> ' + edpu.calc_time_utils.duration_string_with_negative(real_month_time_passed)
+        result += ' ' + edpu.calc_time_utils.duration_string_with_negative(month_time_diff, True)
         result += '\n'
 
         if today in rbs:
             result += 'Estimation month time (with today): '
-            result += duration_string(est_month_time_total) + ' -> ' + duration_string_with_negative(real_month_time_total_with_today)
-            result += ' / ' + duration_string(est_month_time_passed_with_today) + ' -> ' + duration_string_with_negative(real_month_time_passed_with_today)
-            result += ' ' + duration_string_with_negative(month_time_diff_with_today, True)
+            result += edpu.calc_time_utils.duration_string(est_month_time_total) + ' -> ' + edpu.calc_time_utils.duration_string_with_negative(real_month_time_total_with_today)
+            result += ' / ' + edpu.calc_time_utils.duration_string(est_month_time_passed_with_today) + ' -> ' + edpu.calc_time_utils.duration_string_with_negative(real_month_time_passed_with_today)
+            result += ' ' + edpu.calc_time_utils.duration_string_with_negative(month_time_diff_with_today, True)
             result += '\n'
 
         if est_month_time_passed != 0:
             real_est_ratio = real_month_time_passed / est_month_time_passed
             result += 'Estimation-start ratio: ' + str(real_est_ratio) + '\n'
-            result += 'Progressive estimation: ' + duration_string(math.ceil(est_month_time_total * real_est_ratio)) + '\n'
+            result += 'Progressive estimation: ' + edpu.calc_time_utils.duration_string(math.ceil(est_month_time_total * real_est_ratio)) + '\n'
 
         if today in rbs:
             if est_month_time_passed_with_today != 0:
                 real_est_ratio_with_today = real_month_time_passed_with_today / est_month_time_passed_with_today
                 result += 'Estimation-start ratio (with today): ' + str(real_est_ratio_with_today) + '\n'
-                result += 'Progressive estimation (with today): ' + duration_string(math.ceil(est_month_time_total * real_est_ratio_with_today)) + '\n'
+                result += 'Progressive estimation (with today): ' + edpu.calc_time_utils.duration_string(math.ceil(est_month_time_total * real_est_ratio_with_today)) + '\n'
 
     return result
 
