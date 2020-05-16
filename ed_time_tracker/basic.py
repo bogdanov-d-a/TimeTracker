@@ -1,6 +1,6 @@
-from ed_time_tracker.common import *
-import edpu.query_window
-import edpu.file_utils
+from .common import *
+from edpu import query_window
+from edpu import file_utils
 
 def get_stats(actions):
     result = ''
@@ -21,6 +21,6 @@ def get_stats(actions):
 
 def stats_viewer(data_filename):
     def data_provider():
-        data = edpu.file_utils.eval_file(data_filename)
+        data = file_utils.eval_file(data_filename)
         return get_stats(data[0][data[1]])
-    edpu.query_window.run_with_exception_wrapper(data_provider, 'Time stats')
+    query_window.run_with_exception_wrapper(data_provider, 'Time stats')
